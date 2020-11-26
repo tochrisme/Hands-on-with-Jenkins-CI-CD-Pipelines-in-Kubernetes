@@ -1,0 +1,61 @@
+ks apply -f rbac.yaml
+
+//Get serviceaccount (jenkins) access token
+kubectl -n default get serviceaccount/jenkins -o jsonpath='{.secrets[0].name}'
+kubectl get sa jenkins -o json|jq -r '.secrets[].name'
+
+//returns jenkins-token-z8mdg
+
+eyJhbGciOiJSUzI1NiIsImtpZCI6InpRRl9UMnVEV2g1YjUyVlZGbVd1Mnh3S2tLdXZBc3NtdDdzNnZFRS0zdncifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImplbmtpbnMtdG9rZW4tejhtZGciLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiamVua2lucyIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjVlNTA4M2FhLTkxNjYtNGU1ZS05ZjRjLTUxZjA4NjdiODlkYyIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmplbmtpbnMifQ.C8Z3wWgcUBVKMvmezCHFWN2nULIAaTHv-Z2EVGXr0NuxXo8w9lS6vmXNyWZEt4PDjdBWoE-3IyG_5ZC4BaV2H3t4Zi5NhBVygPYkz_nKIt5HxaJVmAZat6_C7JzHi0T56yCjYjDe_A7EBRM30EXqkzsrYrMk0OYXwCm37WokQSKs7tf2QFgu51ySQDuutno2lNsmg-7i9fNQ4dj5u-SBnCBmRW6lL1YtupssHf4gAr1omzTWNEM3dGU8oj3wdFElx37fD2fmDQX64OHCZyhFQ_jXU58T1ZkUmug__23APgLXft60plzdTgCQmMZo5rgHoqeluQ23QyNUieim7YQZ-g
+
+JENKINS_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6InpRRl9UMnVEV2g1YjUyVlZGbVd1Mnh3S2tLdXZBc3NtdDdzNnZFRS0zdncifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImplbmtpbnMtdG9rZW4tejhtZGciLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiamVua2lucyIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjVlNTA4M2FhLTkxNjYtNGU1ZS05ZjRjLTUxZjA4NjdiODlkYyIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmplbmtpbnMifQ.C8Z3wWgcUBVKMvmezCHFWN2nULIAaTHv-Z2EVGXr0NuxXo8w9lS6vmXNyWZEt4PDjdBWoE-3IyG_5ZC4BaV2H3t4Zi5NhBVygPYkz_nKIt5HxaJVmAZat6_C7JzHi0T56yCjYjDe_A7EBRM30EXqkzsrYrMk0OYXwCm37WokQSKs7tf2QFgu51ySQDuutno2lNsmg-7i9fNQ4dj5u-SBnCBmRW6lL1YtupssHf4gAr1omzTWNEM3dGU8oj3wdFElx37fD2fmDQX64OHCZyhFQ_jXU58T1ZkUmug__23APgLXft60plzdTgCQmMZo5rgHoqeluQ23QyNUieim7YQZ-g
+
+
+
+//build Jenkins container 
+docker build --build-arg K8S_TOKEN=$JENKINS_TOKEN -t jenkins:docker jenkins-build/.
+//deploy
+kubectl create -f  jenkins-build/deployment.yaml
+
+//login Jenkins
+export JENKINS_POD=$(kubectl get po -l name=jenkins -o name | cut -d/ -f2)
+
+//get initial pwd
+kubectl exec $JENKINS_POD -- cat /var/jenkins_home/secrets/initialAdminPassword
+
+# Get into the jenkins pod
+kubectl exec -ti $JENKINS_POD -- bash
+//Install additional plugins
+java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar \
+    -auth admin:admin \
+    -s http://127.0.0.1:8080/ \
+    install-plugin copyartifact job-dsl pipeline-utility-steps
+
+
+//Disable security
+sed -i 's/<useSecurity>true/<useSecurity>false/' /var/jenkins_home/config.xml
+//restart jenkins
+
+
+
+
+
+
+
+
+
+
+------------------------------
+
+//install Flannel
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+
+//Find master node name and make it schedulable
+export K8S_MASTER=$(kubectl get nodes -o name | cut -d/ -f2)
+echo $K8S_MASTER
+//returns docker-desktop
+
+# kubectl describe node $K8S_MASTER
+
+# kubectl taint node $K8S_MASTER node-role.kubernetes.io/master:-

@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -20,7 +20,7 @@ spec:
           image: jenkins:docker
           imagePullPolicy: IfNotPresent
           livenessProbe:
-            failureThreshold: 2
+            failureThreshold: 2000
             httpGet:
               path: /login
               port: 8080
@@ -45,9 +45,12 @@ spec:
       terminationGracePeriodSeconds: 30
       volumes:
         - name: jenkins-data
-          hostPath:
-            path: /jenkins-data
-            type: DirectoryOrCreate
+          persistentVolumeClaim:
+            claimName: jenkins-data-pvc
+          # hostPath:
+          #   path: /jenkins-data
+          #   type: DirectoryOrCreate
         - name: dockersock
           hostPath:
             path: /var/run/docker.sock
+
