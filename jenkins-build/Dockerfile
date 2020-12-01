@@ -1,7 +1,7 @@
 # Build with
 # docker build --build-arg K8S_TOKEN=$JENKINS_TOKEN -t jenkins:docker .
 
-FROM jenkins/jenkins:lts
+FROM jenkins/jenkins:latest
 
 USER root
 
